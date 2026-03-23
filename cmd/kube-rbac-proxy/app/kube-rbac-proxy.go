@@ -149,7 +149,7 @@ type completedProxyRunOptions struct {
 func (o *completedProxyRunOptions) Validate() []error {
 	var errs []error
 
-	hasCerts := !(o.tls.CertFile == "") && !(o.tls.KeyFile == "")
+	hasCerts := o.tls.CertFile != "" && o.tls.KeyFile != ""
 	hasInsecureListenAddress := o.insecureListenAddress != ""
 	if !hasCerts || hasInsecureListenAddress {
 		klog.Warning(`
