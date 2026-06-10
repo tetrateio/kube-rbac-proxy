@@ -38,7 +38,7 @@ import (
 	"github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"golang.org/x/net/http2/h2c" //nolint:staticcheck // h2c package deprecated but no replacement yet
 
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -511,7 +511,7 @@ func Run(cfg *completedProxyRunOptions) error {
 			if cfg.http2Disable {
 				srv.Handler = mux
 			} else {
-				srv.Handler = h2c.NewHandler(mux, cfg.http2Options)
+				srv.Handler = h2c.NewHandler(mux, cfg.http2Options) //nolint:staticcheck // no drop-in replacement available for h2c.NewHandler in supported Go version
 			}
 
 			l, err := net.Listen("tcp", cfg.insecureListenAddress)
