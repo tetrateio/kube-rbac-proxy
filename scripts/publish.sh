@@ -10,7 +10,10 @@ set -x
 
 # github actions, by default, fetches using `--no-tags`.
 # we need tags though to create a release version string.
-git fetch --tags
+# Use --force to allow updating existing local tags (checkout@v2 sets the
+# trigger tag locally; without -f, git fetch --tags would fail with
+# "would clobber existing tag" on re-runs or when the tag object changes).
+git fetch --tags -f
 
 QUAY_PATH="${QUAY_PATH:-docker.io/tetrate/kube-rbac-proxy}"
 CPU_ARCHS="amd64 arm64"
