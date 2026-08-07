@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 
+	"k8s.io/apiserver/pkg/apis/apiserver"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/request/bearertoken"
 	"k8s.io/apiserver/pkg/server/dynamiccertificates"
@@ -42,14 +43,31 @@ func NewOIDCAuthenticator(config *OIDCConfig) (*OIDCAuthenticator, error) {
 		return nil, err
 	}
 
+	// k8s.io/apiserver v0.29 replaced the flat oidc.Options fields with a
+	// structured apiserver.JWTAuthenticator. Prefix is a *string there, and it
+	// must be non-nil whenever the matching claim is set.
+	jwtAuthenticator := apiserver.JWTAuthenticator{
+		Issuer: apiserver.Issuer{
+			URL:       config.IssuerURL,
+			Audiences: []string{config.ClientID},
+		},
+		ClaimMappings: apiserver.ClaimMappings{
+			Username: apiserver.PrefixedClaimOrExpression{
+				Claim:  config.UsernameClaim,
+				Prefix: &config.UsernamePrefix,
+			},
+		},
+	}
+	if config.GroupsClaim != "" {
+		jwtAuthenticator.ClaimMappings.Groups = apiserver.PrefixedClaimOrExpression{
+			Claim:  config.GroupsClaim,
+			Prefix: &config.GroupsPrefix,
+		}
+	}
+
 	tokenAuthenticator, err := oidc.New(oidc.Options{
-		IssuerURL:            config.IssuerURL,
-		ClientID:             config.ClientID,
+		JWTAuthenticator:     jwtAuthenticator,
 		CAContentProvider:    dyCA,
-		UsernameClaim:        config.UsernameClaim,
-		UsernamePrefix:       config.UsernamePrefix,
-		GroupsClaim:          config.GroupsClaim,
-		GroupsPrefix:         config.GroupsPrefix,
 		SupportedSigningAlgs: config.SupportedSigningAlgs,
 	})
 	if err != nil {
