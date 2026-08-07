@@ -44,29 +44,26 @@ func NewOIDCAuthenticator(config *OIDCConfig) (*OIDCAuthenticator, error) {
 	}
 
 	// k8s.io/apiserver v0.29 replaced the flat oidc.Options fields with a
-	// structured apiserver.JWTAuthenticator. Prefix is a *string there, and it
-	// must be non-nil whenever the matching claim is set.
-	jwtAuthenticator := apiserver.JWTAuthenticator{
-		Issuer: apiserver.Issuer{
-			URL:       config.IssuerURL,
-			Audiences: []string{config.ClientID},
-		},
-		ClaimMappings: apiserver.ClaimMappings{
-			Username: apiserver.PrefixedClaimOrExpression{
-				Claim:  config.UsernameClaim,
-				Prefix: &config.UsernamePrefix,
+	// structured apiserver.JWTAuthenticator. This mirrors the equivalent
+	// migration upstream in brancz/kube-rbac-proxy v0.18.0, except that
+	// oidc.New only takes a context from k8s.io/apiserver v0.30 onwards.
+	tokenAuthenticator, err := oidc.New(oidc.Options{
+		JWTAuthenticator: apiserver.JWTAuthenticator{
+			Issuer: apiserver.Issuer{
+				URL:       config.IssuerURL,
+				Audiences: []string{config.ClientID},
+			},
+			ClaimMappings: apiserver.ClaimMappings{
+				Username: apiserver.PrefixedClaimOrExpression{
+					Prefix: &config.UsernamePrefix,
+					Claim:  config.UsernameClaim,
+				},
+				Groups: apiserver.PrefixedClaimOrExpression{
+					Prefix: &config.GroupsPrefix,
+					Claim:  config.GroupsClaim,
+				},
 			},
 		},
-	}
-	if config.GroupsClaim != "" {
-		jwtAuthenticator.ClaimMappings.Groups = apiserver.PrefixedClaimOrExpression{
-			Claim:  config.GroupsClaim,
-			Prefix: &config.GroupsPrefix,
-		}
-	}
-
-	tokenAuthenticator, err := oidc.New(oidc.Options{
-		JWTAuthenticator:     jwtAuthenticator,
 		CAContentProvider:    dyCA,
 		SupportedSigningAlgs: config.SupportedSigningAlgs,
 	})
